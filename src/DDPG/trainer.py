@@ -24,7 +24,6 @@ class Crash_Checker(object):
         return False
 
 class DDPG_trainer(object):
-#    def __init__(self, train_args, agent_args, model_args):
     def __init__(self, args_dict):
         self.args_dict = args_dict
         self.nb_epoch = args_dict['nb_epoch']

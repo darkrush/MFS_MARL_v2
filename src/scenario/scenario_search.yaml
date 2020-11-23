@@ -1,7 +1,7 @@
 common:
   use_gui : False
-  time_limit : 180.0    # maximal time for one episode
-  reset_mode : random
+  time_limit : 100.0    # maximal time for one episode
+  reset_mode : init
   field_range : [-2.0,2.0,-2.0,2.0]
   #field_range : [-10.0,10.0,-10.0,10.0]
   reward_coef :
@@ -24,23 +24,23 @@ default_agent: &default_agent # default setting
   init_enable: true
 
 agent_groups: 
-  #group_1:
-  #   num : 4                     # number of agents in group_1:
-  #   <<: *default_agent          # use default agent setting
-  #   init_x     : [-1.0, 1.0, 1.0,-1.0]    # init x coordinate
-  #   init_y     : [-1.0,-1.0, 1.0, 1.0]    # init y coordinate
-  #   deg_init_theta : [0.0,90.0,180.0,270.0] # init theta
-  #   init_vel_b : [0.0,0.0,0.0,0.0]      # init velocity of back point
-  #   deg_init_phi   : [0.0,0.0,0.0,0.0]      # init front wheel deflection
-  #   init_target_x   : [1.0,-1.0,-1.0, 1.0]    # target x coordinate
-  #   init_target_y   : [1.0, 1.0,-1.0,-1.0]    # target y coordinate
-  group_2:
-    num :  6                   # number of agents in group_1:
-    <<: *default_agent          # use default agent setting
-    init_x     : 0.0
-    init_y     : 0.0
-    deg_init_theta : 0
-    init_vel_b : 0
-    deg_init_phi   : 0
-    init_target_x   : 0.0
-    init_target_y   : 0.0
+  group_1:
+     num : 4                     # number of agents in group_1:
+     <<: *default_agent          # use default agent setting
+     init_x     : [-1.0, 1.0, 1.0,-1.0]    # init x coordinate
+     init_y     : [-1.0,-1.0, 1.0, 1.0]    # init y coordinate
+     deg_init_theta : [0.0,90.0,180.0,270.0] # init theta
+     init_vel_b : [0.0,0.0,0.0,0.0]      # init velocity of back point
+     deg_init_phi   : [0.0,0.0,0.0,0.0]      # init front wheel deflection
+     init_target_x   : [1.0,-1.0,-1.0, 1.0]    # target x coordinate
+     init_target_y   : [1.0, 1.0,-1.0,-1.0]    # target y coordinate
+  #group_2:
+  #  num :  6                   # number of agents in group_1:
+  #  <<: *default_agent          # use default agent setting
+  #  init_x     : 0.0
+  #  init_y     : 0.0
+  #  deg_init_theta : 0
+  #  init_vel_b : 0
+  #  deg_init_phi   : 0
+  #  init_target_x   : 0.0
+  #  init_target_y   : 0.0

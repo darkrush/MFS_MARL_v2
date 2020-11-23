@@ -7,6 +7,104 @@ from .basic import AgentProp,AgentState
 from .paser import parse_senario
 from .utils import *
 
+def prefer_vel_list(vel,phi):
+    if phi == 0:
+        #return [(vel,0),(vel,-1),(vel,1),(-vel,0),(-vel,-1),(-vel,1)]
+        return [(vel,0),(vel,-1),(vel,1)]
+    else:
+        #return [(vel,phi),(vel,-phi),(vel,0),(-vel,-phi),(-vel,phi),(-vel,0)]
+        return [(vel,phi),(vel,-phi),(vel,0)]
+
+def path(x,y,theta,target_x,target_y, max_phi = 0.2983, l = 0.3, dist = 0.1):
+    min_r = l/np.tan(max_phi)
+    xt = target_x - x
+    yt = target_y - y
+    xt,yt = (xt*np.cos(theta)+yt*np.sin(theta),yt*np.cos(theta)-xt*np.sin(theta))
+    if abs(yt) < dist*0.5:
+        vel = int(np.sign(xt))
+        phi = 0
+    else:
+        in_min_r = (xt**2+(abs(yt)-min_r)**2)< min_r**2
+        vel = -1 if (bool(in_min_r) ^ bool(xt<0)) else 1
+        phi = -1 if (bool(in_min_r) ^ bool(yt<0)) else 1
+    return vel,phi
+
+
+class SearchNode(object):
+    def __init__(self, state_list, time, parent_action = None, parent_action_index = None):
+        self.state_list = copy.deepcopy(state_list)
+        self.time = time
+        self.parent_action = parent_action
+        self.parent_action_index = parent_action_index
+        self.prefer_action_list = []
+        self.enable_index_list = []
+        if parent_action is None:
+            self.parent_action =[]
+            self.parent_action_index = []
+            for state in self.state_list:
+                self.parent_action.append([0,0])
+                self.parent_action_index.append(0)
+        action_index_list = []
+
+        for index,state in enumerate(self.state_list):
+            if state.enable and not state.reach:
+                self.enable_index_list.append(index)
+                vel,phi = path(state.x,state.y,state.theta,state.target_x,state.target_y)
+                self.prefer_action_list.append(prefer_vel_list(vel,phi))
+                action_index_list.append([i for i in range(len(self.prefer_action_list[-1]))])
+        self.action_index_list = [i for i in product( *action_index_list)]
+        #random.shuffle (self.action_index_list )
+        self.action_index_list.sort(key = lambda l : l.count(0),reverse = True)
+
+        if parent_action is not None and len(self.prefer_action_list)>0:
+            inv_action_index = []
+            have_inv = True
+            for index,state in enumerate(self.state_list):
+                if not have_inv : break
+                if state.enable and not state.reach:
+                    inv_action = (-parent_action[index][0],parent_action[index][1])
+                    if have_inv and inv_action in self.prefer_action_list[-1]:
+                        inv_action_index.append(self.prefer_action_list[-1].index(inv_action))
+                    else:
+                        have_inv = False
+            if have_inv:
+                self.action_index_list.remove(tuple(inv_action_index))
+
+    def pruning(self, agent_id_list, action_index_list = None):
+        if action_index_list is None:
+            action_index_list = self.last_action
+        enable_agent_idx_list = [self.enable_index_list.index(i) for i in agent_id_list if i in self.enable_index_list ]
+        new_action_index_list = []
+        for action_index in self.action_index_list:
+            check = False
+            for idx in enable_agent_idx_list:
+                if action_index[idx] != action_index_list[idx]:
+                    check = True
+                    break
+            if check :
+                new_action_index_list.append(action_index)
+        self.action_index_list = new_action_index_list
+        
+        
+
+    def next_action_index(self):
+        if len(self.action_index_list) > 0:
+            self.last_action = self.action_index_list.pop(0)
+            return self.last_action
+        else:
+            return None
+        
+    def decode_action(self,action_index_list):
+        action_list = [[0,0] for _ in self.state_list]
+        action_index_list_ = [-1 for _ in self.state_list]
+        for enable_idx,all_idx in enumerate(self.enable_index_list):
+            test_action = self.prefer_action_list[enable_idx][action_index_list[enable_idx]]
+            action_list[all_idx][0] = test_action[0]
+            action_list[all_idx][1] = test_action[1]
+            action_index_list_[all_idx] = action_index_list[enable_idx]
+        return action_list,action_index_list_
+
+
 class history(object):
     def __init__(self):
         self.reset_state = None
@@ -48,7 +146,8 @@ class history(object):
 
 
 class MultiCarSim(object):
-    def __init__(self, scenario_name, step_t = 0.1, sim_step = 100, ref_state_list=None):
+
+    def __init__(self, scenario_name, step_t = 0.1, sim_step = 100):
         senario_dict = parse_senario(scenario_name)
         
         self.global_agent_prop = AgentProp(agent_prop=senario_dict['default_agent'])
@@ -70,8 +169,27 @@ class MultiCarSim(object):
 
         # reset_mode is 'random' or 'init'
         self.reset_mode = senario_dict['common']['reset_mode']
-        self.ref_state_list = ref_state_list
-        
+        if self.reset_mode =='random':
+            self.ref_state_list = None
+        else:
+            self.ref_state_list = []
+            for (_,grop) in senario_dict['agent_groups'].items():
+                for agent_prop in grop:
+                    agent = AgentProp(agent_prop)
+                    state = AgentState()
+                    state.x = agent.init_x
+                    state.y = agent.init_y
+                    state.theta = agent.init_theta
+                    state.vel_b = agent.init_vel_b
+                    state.movable = agent.init_movable
+                    state.phi = agent.init_phi
+                    state.target_x = agent.init_target_x
+                    state.target_y = agent.init_target_y
+                    state.enable = True
+                    state.crash = False
+                    state.reach = False
+                    self.ref_state_list.append(state)
+
         # assign color for each agent
         self.agent_color_list = None
         self.cam_bound = None
@@ -306,6 +424,73 @@ class MultiCarSim(object):
         result['mean_vel'] = sum(vel_list)/len(vel_list)
         return result
 
+    def search_policy(self, multi_step = 2, back_number = 1):
+        search_step = 0
+        MAX_STEP = 1e4
+        start_time =self.total_time
+        begin_state = copy.deepcopy(self.last_state_list)
+        for state in begin_state:
+            if not state.enable: continue
+            if state.reach or state.crash:
+                print('init state for search not clean')
+                return None,None, search_step
+        search_stack = [SearchNode(begin_state,start_time),]
+        search_finish = False
+        step = 0
+        while not search_finish:
+            print(len(search_stack))
+            step = step + 1
+            if step >= MAX_STEP:
+                return None, None, search_step
+
+            if len(search_stack) == 0:
+                return None, None, search_step
+            next_action_index = search_stack[-1].next_action_index()
+            if next_action_index is None:
+                search_stack.pop()
+                continue
+            next_action,next_action_index = search_stack[-1].decode_action(next_action_index)
+
+            self._apply_action(next_action)
+            for _ in range(multi_step):
+                for _ in range(self.sim_step):
+                    self._integrate_state()
+                    self._check_collisions()
+                    self._check_reach()
+                #self.render()
+                search_step += 1
+
+            new_time  = self.total_time
+            new_state = copy.deepcopy(self.last_state_list)
+            have_crash = False
+            all_reach = True
+            crash_index = []
+            for idx,state in enumerate(new_state):
+                if state.enable:
+                    if state.crash:
+                        crash_index.append(idx)
+                    all_reach = all_reach and state.reach
+                    have_crash = have_crash or state.crash
+            
+            if have_crash:
+                for _ in range(len(search_stack) - max(len(search_stack)-back_number,0) - 1):
+                    search_stack.pop()
+
+                search_stack[-1].pruning(crash_index)#,next_action_index)
+                self.set_state(search_stack[-1].state_list,total_time = search_stack[-1].time)
+                continue
+            else:
+                search_stack.append(SearchNode(new_state,new_time,next_action,next_action_index))
+                if all_reach:
+                    search_finish = True
+        action_list = []
+        action_index_list = []
+        for node in search_stack[1:]:
+            for _ in  range(multi_step):
+                action_list.append(node.parent_action)
+                action_index_list.append(node.parent_action_index)
+        return action_list,action_index_list,search_step
+
     def _step(self, action):
         old_state = copy.deepcopy(self.last_state_list)
         self._apply_action(action)
@@ -419,10 +604,3 @@ class MultiCarSim(object):
                 laser_state = np.min(np.vstack([laser_state,new_laser]),axis = 0)
             self.laser_state_list.append(laser_state)
         self.laser_dirty = False
-
-    def search_policy(self, multi_step = 2, back_number = 1):
-        action_list = None
-        action_index_list = None
-        search_step = None
-        return action_list,action_index_list,search_step
-    
