@@ -15,23 +15,31 @@ def prefer_vel_list(vel,phi):
         #return [(vel,phi),(vel,-phi),(vel,0),(-vel,-phi),(-vel,phi),(-vel,0)]
         return [(vel,phi),(vel,-phi),(vel,0)]
 
-def path(x,y,theta,target_x,target_y, max_phi = 0.2983, l = 0.3, dist = 0.1):
-    min_r = l/np.tan(max_phi)
-    xt = target_x - x
-    yt = target_y - y
-    xt,yt = (xt*np.cos(theta)+yt*np.sin(theta),yt*np.cos(theta)-xt*np.sin(theta))
-    if abs(yt) < dist*0.5:
-        vel = int(np.sign(xt))
-        phi = 0
-    else:
-        in_min_r = (xt**2+(abs(yt)-min_r)**2)< min_r**2
-        vel = -1 if (bool(in_min_r) ^ bool(xt<0)) else 1
-        phi = -1 if (bool(in_min_r) ^ bool(yt<0)) else 1
-    return vel,phi
+class path_calculator(object):
+    def __init__(self,max_phi,L_axis, reach_dist):
+        self.max_phi = max_phi
+        self.L_axis = L_axis
+        self.reach_dist = reach_dist
+    
+    def path(self, state):
+        min_r = self.L_axis/np.tan(self.max_phi)
+        xt = state.target_x - state.x
+        yt = state.target_y - state.y
+        ct = np.cos(state.theta)
+        st = np.sin(state.theta)
+        xt,yt = (xt*ct+yt*st,yt*ct-xt*st)
+        if abs(yt) < self.reach_dist*0.5:
+            vel = int(np.sign(xt))
+            phi = 0
+        else:
+            in_min_r = (xt**2+(abs(yt)-min_r)**2)< min_r**2
+            vel = -1 if (bool(in_min_r) ^ bool(xt<0)) else 1
+            phi = -1 if (bool(in_min_r) ^ bool(yt<0)) else 1
+        return vel,phi
 
 
 class SearchNode(object):
-    def __init__(self, state_list, time, parent_action = None, parent_action_index = None):
+    def __init__(self, state_list, time, path_call_back , parent_action = None, parent_action_index = None):
         self.state_list = copy.deepcopy(state_list)
         self.time = time
         self.parent_action = parent_action
@@ -49,7 +57,7 @@ class SearchNode(object):
         for index,state in enumerate(self.state_list):
             if state.enable and not state.reach:
                 self.enable_index_list.append(index)
-                vel,phi = path(state.x,state.y,state.theta,state.target_x,state.target_y)
+                vel,phi = path_call_back(state)
                 self.prefer_action_list.append(prefer_vel_list(vel,phi))
                 action_index_list.append([i for i in range(len(self.prefer_action_list[-1]))])
         self.action_index_list = [i for i in product( *action_index_list)]
@@ -103,8 +111,14 @@ class SearchNode(object):
             action_list[all_idx][1] = test_action[1]
             action_index_list_[all_idx] = action_index_list[enable_idx]
         return action_list,action_index_list_
+    
 
-
+    def __str__(self):
+        return 'AL: '+str(len(self.action_index_list))
+    
+    def __repr__(self):
+        return self.__str__()
+    
 class history(object):
     def __init__(self):
         self.reset_state = None
@@ -377,7 +391,7 @@ class MultiCarSim(object):
             # check whether we should stop one rollout
             finish_flag = False
             if finish_call_back is not None:
-                finish_flag = finish_call_back(new_state)
+                finish_flag = finish_call_back(self.last_state_list)
     
             finish_flag = finish_flag or (self.total_time > self.time_limit)
             if finish_flag:
@@ -424,7 +438,10 @@ class MultiCarSim(object):
         result['mean_vel'] = sum(vel_list)/len(vel_list)
         return result
 
-    def search_policy(self, multi_step = 2, back_number = 1):
+    def search_policy(self, multi_step = 2, back_number = 1, use_gui = False):
+        path_calc = path_calculator(self.global_agent_prop.K_phi,
+                                    self.global_agent_prop.L_axis,
+                                    self.global_agent_prop.R_reach)
         search_step = 0
         MAX_STEP = 1e4
         start_time =self.total_time
@@ -434,11 +451,14 @@ class MultiCarSim(object):
             if state.reach or state.crash:
                 print('init state for search not clean')
                 return None,None, search_step
-        search_stack = [SearchNode(begin_state,start_time),]
+        search_stack = [SearchNode(begin_state,start_time,path_calc.path),]
         search_finish = False
         step = 0
+
+        #DFS body
         while not search_finish:
-            print(len(search_stack))
+
+            print(search_stack)
             step = step + 1
             if step >= MAX_STEP:
                 return None, None, search_step
@@ -457,8 +477,11 @@ class MultiCarSim(object):
                     self._integrate_state()
                     self._check_collisions()
                     self._check_reach()
-                #self.render()
                 search_step += 1
+                
+            if use_gui:
+                self.render()
+                
 
             new_time  = self.total_time
             new_state = copy.deepcopy(self.last_state_list)
@@ -473,14 +496,15 @@ class MultiCarSim(object):
                     have_crash = have_crash or state.crash
             
             if have_crash:
-                for _ in range(len(search_stack) - max(len(search_stack)-back_number,0) - 1):
-                    search_stack.pop()
+                search_stack = search_stack[:-back_number]
+                #for _ in range(len(search_stack) - max(len(search_stack)-back_number,0) - 1):
+                #    search_stack.pop()
 
                 search_stack[-1].pruning(crash_index)#,next_action_index)
                 self.set_state(search_stack[-1].state_list,total_time = search_stack[-1].time)
                 continue
             else:
-                search_stack.append(SearchNode(new_state,new_time,next_action,next_action_index))
+                search_stack.append(SearchNode(new_state,new_time,path_calc.path,next_action,next_action_index))
                 if all_reach:
                     search_finish = True
         action_list = []
@@ -508,6 +532,15 @@ class MultiCarSim(object):
                                                  all_reset=False)
             # if the state real changed, enable is True
             set_new_state = enable_tmp
+        elif self.reset_mode == 'init': 
+            change = False 
+            for idx,state in enumerate(new_state_before_reset):
+                if state.reach and state.enable:
+                    change = True
+                    state.enable = False
+            enable_list = None
+            set_new_state = change
+            new_state_after_reset = new_state_before_reset
         if set_new_state:
             self.set_state(new_state_after_reset, enable_list=enable_list )
         

@@ -39,3 +39,8 @@ class AgentState(object):
         self.target_x   = 1
         # target y coordinate
         self.target_y   = 1
+    
+    def __str__(self):
+        return 'x : '+str(self.x)+' y : '+str(self.y)+' theta : '+str(self.theta)
+    def __repr__(self):
+        return self.__str__()
