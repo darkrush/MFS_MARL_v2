@@ -12,10 +12,10 @@ class Crash_Checker(object):
         self.mask = mask
     def set_p(self,p):
         self.p = p
-    def check_crash(self,state_list):
+    def check_crash(self,crash_list):
         if random.random() < self.p:
-            for idx,state in enumerate(state_list):
-                if state.crash :
+            for idx,crash in enumerate(crash_list):
+                if crash :
                     if idx in self.mask:
                         self.mask.remove(idx)
                         continue
@@ -34,6 +34,7 @@ class DDPG_trainer(object):
         self.train_mode = args_dict['train_mode']
         self.search_method= args_dict['search_method']
         self.back_step = args_dict['back_step']
+        self.multi_step = args_dict['multi_step']
         self.expert_file = args_dict['expert_file']
 
         self.agent = DDPG(args_dict)
@@ -63,6 +64,7 @@ class DDPG_trainer(object):
     
     def cycle(self, epsilon, train_actor):
         self.env.reset()
+        self.search_env.reset()
         crash_checker = Crash_Checker()
         crash_checker.set_p(epsilon)
         #get trajection
@@ -70,16 +72,8 @@ class DDPG_trainer(object):
         replace_table = None
         search_state_index= 0
         last_back_index = 0
-        state_history = []
-        obs_history = []
-        time_history = []
-        action_history = []
-        reach_history = []
-        crash_history = []
         search_step = 0
         while True:
-            assert self.search_method is 0
-
             if self.search_method is 1 :
                 rollout_policy = Mix_policy(self.agent.actor,epsilon,search_policy,replace_table)
                 finish = self.env.rollout(rollout_policy.inference, pause_call_back = crash_checker.check_crash)
@@ -92,50 +86,48 @@ class DDPG_trainer(object):
             if finish is 'finish' :
                 break
             elif finish is 'pause':
-                pass
-                #state_history,obs_history,time_history,action_history,reach_history,crash_history = self.env.get_history()
-                #crash_list = [state.crash for state in state_history[-1]]
-                #last_back_index= search_state_index
-                #search_state_index = max(len(state_history)-self.back_step,1)
-                #if self.search_method is 1 :
-                #    if search_state_index > last_back_index:
-                #        backtrack_state = deepcopy(state_history[search_state_index])
-                #        for b_State,crash in zip(backtrack_state,crash_list):
-                #            b_State.enable = crash
-                #        self.search_env.set_state(backtrack_state)
-                #        search_policy,replace_table,search_step = self.search_env.search_policy(multi_step = 1,back_number = 2)
-                #    else:
-                #        search_policy = None
-                #        replace_table = None
 
-                #elif self.search_method is 2:
-                #    if search_state_index > last_back_index:
-                #        replace_table = []
-                #        for idx,crash in enumerate(crash_list):
-                #            if crash:
-                #                replace_table.append(idx)
-                #    else:
-                #        replace_table = None
-                #mask = []
-                #if replace_table is None:
-                #    for idx,state in enumerate(state_history[-1]):
-                #        if state.crash:
-                #            mask.append(idx)
-                #    crash_checker.set_mask(mask)
-                #    state_history = state_history[:-1]
-                #    obs_history = obs_history[:-1]
-                #    time_history = time_history[:-1]
-                #    reach_history = reach_history[:-1]
-                #    crash_history = reach_history[:-1]
-                #else :
-                #    self.env.set_state(state_history[search_state_index],total_time = time_history[search_state_index])
-                #    state_history = state_history[:search_state_index]
-                #    obs_history = obs_history[:search_state_index]
-                #    time_history = time_history[:search_state_index]
-                #    action_history = action_history[:search_state_index]
-                #    reach_history = reach_history[:search_state_index]
-                #    crash_history = reach_history[:search_state_index]
-                #self.env.set_history(state_history,obs_history,time_history,action_history)
+                crash_list = self.env.history.crash_history[-1]
+                # record the length of the trajectory where paused.
+                last_back_index= search_state_index
+
+                search_state_index = max(self.env.history.length()-self.back_step-1,0)
+                if self.search_method is 1 :
+                    if search_state_index > last_back_index and self.env.history.length() >0:
+                        backtrack_state = deepcopy(self.env.history.next_state_history[search_state_index])
+                        for b_State,crash in zip(backtrack_state,crash_list):
+                            b_State.enable = crash
+                        self.search_env.set_state(backtrack_state)
+                        search_policy,replace_table,search_step = self.search_env.search_policy(multi_step = self.multi_step,back_number = 1,use_gui = False)
+                    else:
+                        search_policy = None
+                        replace_table = None
+
+                elif self.search_method is 2:
+                    if search_state_index > last_back_index:
+                        replace_table = []
+                        for idx,crash in enumerate(crash_list):
+                            if crash:
+                                replace_table.append(idx)
+                    else:
+                        replace_table = None
+                mask = []
+                if replace_table is None:
+                    for idx,crash in enumerate(self.env.history.crash_history[-1]):
+                        if crash:
+                            mask.append(idx)
+                    crash_checker.set_mask(mask)
+                    self.env.history.delete(1)
+                    if self.env.history.length() == 0:
+                        self.env.set_state(self.env.history.reset_state,total_time = 0)
+                    else:
+                        self.env.set_state(self.env.history.next_state_history[-1],total_time = self.env.history.time_history[-1])
+                    
+                else :
+                    self.env.history.set_length(search_state_index)
+                    self.env.set_state(self.env.history.next_state_history[search_state_index],total_time = self.env.history.time_history[search_state_index])
+                    
+
 
         trajectoy = self.env.get_trajectoy()
         train_sample = len(trajectoy)

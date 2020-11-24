@@ -40,30 +40,47 @@ class path_calculator(object):
 
 class SearchNode(object):
     def __init__(self, state_list, time, path_call_back , parent_action = None, parent_action_index = None):
+
+        # state list for all agent and simulation time for this node
         self.state_list = copy.deepcopy(state_list)
         self.time = time
+
+        # record the action which the state of this node is simulated by
         self.parent_action = parent_action
         self.parent_action_index = parent_action_index
+
+        # list of prefer_action, which is used to generate new node
         self.prefer_action_list = []
-        self.enable_index_list = []
+
+        # list of enable agent in this state (enable and not reach)
+        # the element ordered in enable index list called (by enable order) 
+        # the element ordered in all index list called (by all order) 
+        # For example, enable_list:[T,F,T,T](by all order) , enable_index_list:[0,2,3](by enable order)
+        self.enable_index_list = [index for index,state in enumerate(self.state_list) if (state.enable and not state.reach)]
+
+        # handle the root node
         if parent_action is None:
-            self.parent_action =[]
-            self.parent_action_index = []
-            for state in self.state_list:
-                self.parent_action.append([0,0])
-                self.parent_action_index.append(0)
-        action_index_list = []
+            self.parent_action =[(0,0) for _ in range(len(self.state_list))]
+            self.parent_action_index = [0 for _ in range(len(self.state_list))]
+        
 
-        for index,state in enumerate(self.state_list):
-            if state.enable and not state.reach:
-                self.enable_index_list.append(index)
-                vel,phi = path_call_back(state)
-                self.prefer_action_list.append(prefer_vel_list(vel,phi))
-                action_index_list.append([i for i in range(len(self.prefer_action_list[-1]))])
-        self.action_index_list = [i for i in product( *action_index_list)]
-        #random.shuffle (self.action_index_list )
-        self.action_index_list.sort(key = lambda l : l.count(0),reverse = True)
+        # build prefer action list for each enable agent(by enable order) 
+        # prefer action list: [[a0, a1, a2],[a0, a1, a2],[a0, a1, a2]]
+        for index in self.enable_index_list:
+            vel,phi = path_call_back(self.state_list[index])
+            agent_prefer_action_list = prefer_vel_list(vel,phi)
+            self.prefer_action_list.append(agent_prefer_action_list)
+        
+        # build action index list for each agent(by enable order) 
+        # a_list_foreach_agent: [[0,1,2],[0,1,2],[0,1,2]]
+        a_list_foreach_agent = [ [i for i in range(len(agent_prefer_action_list))] for l in self.prefer_action_list]
 
+        # combined action index_list built by product of a_list_foreach_agent, and sorted by number of zero
+        # combined_action_index_list: [[0,0,0],[0,0,1],[0,1,0],[1,0,0],....,[2,2,2]]
+        self.combined_action_index_list = [i for i in product( *a_list_foreach_agent)]
+        self.combined_action_index_list.sort(key = lambda l : l.count(0),reverse = True)
+
+        # do sth to prevent inv action problem in DFS (repeate in S_a -> S_b -> S_a -> S_b....)
         if parent_action is not None and len(self.prefer_action_list)>0:
             inv_action_index = []
             have_inv = True
@@ -76,45 +93,54 @@ class SearchNode(object):
                     else:
                         have_inv = False
             if have_inv:
-                self.action_index_list.remove(tuple(inv_action_index))
+                self.combined_action_index_list.remove(tuple(inv_action_index))
 
-    def pruning(self, agent_id_list, action_index_list = None):
-        if action_index_list is None:
-            action_index_list = self.last_action
-        enable_agent_idx_list = [self.enable_index_list.index(i) for i in agent_id_list if i in self.enable_index_list ]
+    # pruning combined_action_index_list by agent_index_list_to_prune(usually because they are crashed)
+    def pruning(self, agent_index_list_to_prune, action_index_list_to_prune = None):
+
+        # now always pruning last action  defaultly
+        if action_index_list_to_prune is None:
+            action_index_list_to_prune = self.last_action
+
+        # decode the agent_index_list_to_prune into enable_index order
+        # only need to check the agent in enable_agent_idx_list
+        enable_agent_idx_list = [self.enable_index_list.index(i) for i in agent_index_list_to_prune if i in self.enable_index_list ]
+
+        # add the combined actions have any difference with the action_index_list_to_prune
+        # so that can purne the the combined actions cause crash
         new_action_index_list = []
-        for action_index in self.action_index_list:
-            check = False
+        for combined_action_index in self.combined_action_index_list:
+            any_difference = False
             for idx in enable_agent_idx_list:
-                if action_index[idx] != action_index_list[idx]:
-                    check = True
+                if combined_action_index[idx] != action_index_list_to_prune[idx]:
+                    any_difference = True
                     break
-            if check :
-                new_action_index_list.append(action_index)
-        self.action_index_list = new_action_index_list
-        
-        
-
-    def next_action_index(self):
-        if len(self.action_index_list) > 0:
-            self.last_action = self.action_index_list.pop(0)
+            if any_difference :
+                new_action_index_list.append(combined_action_index)
+        self.combined_action_index_list = new_action_index_list
+    
+    # pop the first action in combined_action_index_list to simulation (by enable order)
+    def pop_next_action_index(self):
+        if len(self.combined_action_index_list) > 0:
+            self.last_action = self.combined_action_index_list.pop(0)
             return self.last_action
         else:
             return None
-        
-    def decode_action(self,action_index_list):
-        action_list = [[0,0] for _ in self.state_list]
-        action_index_list_ = [-1 for _ in self.state_list]
-        for enable_idx,all_idx in enumerate(self.enable_index_list):
-            test_action = self.prefer_action_list[enable_idx][action_index_list[enable_idx]]
-            action_list[all_idx][0] = test_action[0]
-            action_list[all_idx][1] = test_action[1]
-            action_index_list_[all_idx] = action_index_list[enable_idx]
-        return action_list,action_index_list_
     
+    # extern the action_index_list(by enable order) into full_action_index_list(by all order)
+    def extern_decode_action(self,action_index_list):
+        #default action [0,0] for agent not enable
+        full_action_list = [[0,0] for _ in self.state_list]
+        #default action index -1 for agent not enableate_list](index >=0 means need to replace)
+        full_action_index_list = [-1 for _ in self.state_list]
+        for enable_idx,all_idx in enumerate(self.enable_index_list):
+            full_action_list[all_idx] = self.prefer_action_list[enable_idx][action_index_list[enable_idx]]
+            full_action_index_list[all_idx] = action_index_list[enable_idx]
 
+        return full_action_list, full_action_index_list
+    
     def __str__(self):
-        return 'AL: '+str(len(self.action_index_list))
+        return 'AL: '+str(len(self.combined_action_index_list))
     
     def __repr__(self):
         return self.__str__()
@@ -154,7 +180,17 @@ class history(object):
         self.reach_history = self.reach_history[:-N]
         self.crash_history = self.crash_history[:-N]
         self.reward_history = self.reward_history[:-N]
-    
+
+    def set_length(self, N):
+        assert self.reset_state is not None
+        self.action_history = self.action_history[:N+1]
+        self.next_state_history = self.next_state_history[:N+1]
+        self.obs_history = self.obs_history[:N+1]
+        self.time_history = self.time_history[:N+1]
+        self.reach_history = self.reach_history[:N+1]
+        self.crash_history = self.crash_history[:N+1]
+        self.reward_history = self.reward_history[:N+1]
+
     def length(self):
         return len(self.action_history)
 
@@ -185,7 +221,7 @@ class MultiCarSim(object):
         self.reset_mode = senario_dict['common']['reset_mode']
         if self.reset_mode =='random':
             self.ref_state_list = None
-        else:
+        elif self.reset_mode =='init':
             self.ref_state_list = []
             for (_,grop) in senario_dict['agent_groups'].items():
                 for agent_prop in grop:
@@ -382,7 +418,7 @@ class MultiCarSim(object):
             #check whether we should pause rollout
             pause_flag = False
             if pause_call_back is not None:
-                pause_flag = pause_call_back(self.last_state_list)
+                pause_flag = pause_call_back(self.history.crash_history[-1])
             # if pause_flag is true, return with result_flag='pause'
             if pause_flag:
                 result_flag = 'pause'
@@ -439,81 +475,109 @@ class MultiCarSim(object):
         return result
 
     def search_policy(self, multi_step = 2, back_number = 1, use_gui = False):
+        # path_calculator by naive policy
         path_calc = path_calculator(self.global_agent_prop.K_phi,
                                     self.global_agent_prop.L_axis,
                                     self.global_agent_prop.R_reach)
-        search_step = 0
+        
+        # count the total DFS_step and stop searching if reach MAX_STEP
         MAX_STEP = 1e4
+        DFS_step = 0
+        
+        #count the total simulation step and stop searching if reach MAX_STEP
+        sim_step = 0
+
+        # time and state for root Node 
         start_time =self.total_time
         begin_state = copy.deepcopy(self.last_state_list)
+        search_stack = [SearchNode(begin_state,start_time,path_calc.path),]
+
+        # can not do DFS with root node not clean
         for state in begin_state:
             if not state.enable: continue
             if state.reach or state.crash:
                 print('init state for search not clean')
-                return None,None, search_step
-        search_stack = [SearchNode(begin_state,start_time,path_calc.path),]
-        search_finish = False
-        step = 0
+                return None,None, sim_step
+        
+        # DFS body
+        while True:
+            # count DFS_step
+            DFS_step = DFS_step + 1
 
-        #DFS body
-        while not search_finish:
+            # pop and get the next action index of the last node to build new node
+            next_action_index = search_stack[-1].pop_next_action_index()
 
-            print(search_stack)
-            step = step + 1
-            if step >= MAX_STEP:
-                return None, None, search_step
-
-            if len(search_stack) == 0:
-                return None, None, search_step
-            next_action_index = search_stack[-1].next_action_index()
+            # pop the last node in the search_stack if no next action index in last node
             if next_action_index is None:
                 search_stack.pop()
                 continue
-            next_action,next_action_index = search_stack[-1].decode_action(next_action_index)
 
+            # decode the next action index to real action
+            next_action,next_action_index = search_stack[-1].extern_decode_action(next_action_index)
+
+            # apply the action and do simulation to get new state 
             self._apply_action(next_action)
             for _ in range(multi_step):
                 for _ in range(self.sim_step):
                     self._integrate_state()
                     self._check_collisions()
                     self._check_reach()
-                search_step += 1
-                
+                sim_step += 1
+            
+            # for debug
             if use_gui:
                 self.render()
                 
-
+            # get the new state
             new_time  = self.total_time
             new_state = copy.deepcopy(self.last_state_list)
-            have_crash = False
-            all_reach = True
-            crash_index = []
-            for idx,state in enumerate(new_state):
-                if state.enable:
-                    if state.crash:
-                        crash_index.append(idx)
-                    all_reach = all_reach and state.reach
-                    have_crash = have_crash or state.crash
-            
-            if have_crash:
-                search_stack = search_stack[:-back_number]
-                #for _ in range(len(search_stack) - max(len(search_stack)-back_number,0) - 1):
-                #    search_stack.pop()
 
+            # check if all agent reach or some agent crash
+            have_crash = True in [state.crash and state.enable for state in new_state]
+
+            # if some agent crash
+            if have_crash:
+                #search_stack = search_stack[:-back_number]
+                for _ in range(len(search_stack) - max(len(search_stack)-back_number,0) - 1):
+                    search_stack.pop()
+                crash_index = [idx for idx,state in enumerate(new_state) if state.enable and state.crash]
                 search_stack[-1].pruning(crash_index)#,next_action_index)
                 self.set_state(search_stack[-1].state_list,total_time = search_stack[-1].time)
                 continue
-            else:
-                search_stack.append(SearchNode(new_state,new_time,path_calc.path,next_action,next_action_index))
-                if all_reach:
-                    search_finish = True
-        action_list = []
-        action_index_list = []
-        for node in search_stack[1:]:
-            for _ in  range(multi_step):
-                action_list.append(node.parent_action)
-                action_index_list.append(node.parent_action_index)
-        return action_list,action_index_list,search_step
+            
+            # if no agent crash, append new SearchNode into search stack
+            search_stack.append(SearchNode(new_state,new_time,path_calc.path,next_action,next_action_index))
+
+            # finish if DFS_step beyond MAX_STEP
+            all_reach = all([state.reach or not state.enable for state in new_state]) 
+            if all_reach:
+                DFS_flag = 'ALL_REACH'
+                break
+            
+            # finish if DFS_step beyond MAX_STEP
+            if DFS_step >= MAX_STEP:
+                DFS_flag = 'MAX'
+                break
+
+            # finish if stack is empty (no path is avaliable)
+            if len(search_stack) == 0:
+                DFS_flag = 'NO_PATH'
+                break
+
+        if DFS_flag == 'MAX' or DFS_flag == 'NO_PATH':
+            # failed search policy
+            action_list = None
+            action_index_list = None
+        elif DFS_flag == 'ALL_REACH':
+            # found avaliable policy
+            action_list = []
+            action_index_list = []
+            for node in search_stack[1:]:
+                for _ in  range(multi_step):
+                    action_list.append(node.parent_action)
+                    action_index_list.append(node.parent_action_index)
+        
+        return action_list, action_index_list, sim_step
 
     def _step(self, action):
         old_state = copy.deepcopy(self.last_state_list)

@@ -8,10 +8,10 @@ def check_done(state_list):
     return True
 
 
-env = MultiCarSim('./scenario/scenario_search.yaml', step_t = 0.1,sim_step = 100)
+env = MultiCarSim('./scenario/test_search.yaml', step_t = 0.5,sim_step = 100)
 env.reset()
 
-search_env = MultiCarSim('./scenario/scenario_search.yaml', step_t = 0.1,sim_step = 1)
+search_env = MultiCarSim('./scenario/test_search.yaml', step_t = 0.5,sim_step = 1)
 search_env.reset()
 
 state = env.get_state()

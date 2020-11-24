@@ -19,6 +19,7 @@ def parse_arg():
     parser.add_argument('--decay-coef', default=0.2, type=float, help='decay coef')
     parser.add_argument('--search-method', default = 0, type=int, help='1 if do policy search')
     parser.add_argument('--back-step', default = 7, type=int, help='back step for search policy')
+    parser.add_argument('--multi-step', default = 2, type=int, help='multi search step for search policy')
     parser.add_argument('--seed', default=0, type=int, help='random_seed')
     parser.add_argument('--expert-file', default='./expert.pkl', type=str, help='expert actor file dir')
     parser.add_argument('--cuda', default=1, type=int, help='cuda')
@@ -49,9 +50,9 @@ def parse_arg():
     parser.add_argument('--search-env', default='./src/scenario/scenario_search.yaml', type=str, help='search env file')
     parser.add_argument('--eval-env', default='./src/scenario/scenario_train.yaml', type=str, help='eval env file')
     parser.add_argument('--step-t', default=1.0, type=float, help='sim time for each step')
-    parser.add_argument('--train-sim-step', default=1000, type=int, help='sim delta time in train')
+    parser.add_argument('--train-sim-step', default=10, type=int, help='sim delta time in train')
     parser.add_argument('--search-sim-step', default=1, type=int, help='sim delta time in search')
-    parser.add_argument('--eval-sim-step', default=1000, type=int, help='sim delta time in eval')
+    parser.add_argument('--eval-sim-step', default=10, type=int, help='sim delta time in eval')
 
     args = parser.parse_args()
     return args
