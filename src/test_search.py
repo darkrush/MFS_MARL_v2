@@ -19,7 +19,7 @@ start_time = env.total_time
 
 search_env.set_state(state,total_time = start_time)
 
-[trace,index,search_step] = search_env.search_policy(multi_step=2 , back_number= 2, use_gui= False)
+[trace,index,search_step] = search_env.search_policy(multi_step=2 , back_number= 2, use_gui= True)
 if trace is None :
     print("failed!!!")
     exit()

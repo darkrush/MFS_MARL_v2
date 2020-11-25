@@ -128,7 +128,7 @@ class DDPG_trainer(object):
                     self.env.set_state(self.env.history.next_state_history[search_state_index],total_time = self.env.history.time_history[search_state_index])
                     
 
-
+        # after get trajectory append data into memory
         trajectoy = self.env.get_trajectoy()
         train_sample = len(trajectoy)
         for trans in trajectoy:
@@ -138,6 +138,7 @@ class DDPG_trainer(object):
                                           trans['reward'][agent_idx],
                                           trans['obs_next'][agent_idx],
                                           trans['done'][agent_idx])
+
         critic_loss, actor_loss = self._apply_train(train_actor=train_actor)
 
         results = self.env.get_result()

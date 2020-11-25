@@ -37,7 +37,6 @@ class path_calculator(object):
             phi = -1 if (bool(in_min_r) ^ bool(yt<0)) else 1
         return vel,phi
 
-
 class SearchNode(object):
     def __init__(self, state_list, time, path_call_back , parent_action = None, parent_action_index = None):
 
@@ -194,10 +193,78 @@ class history(object):
     def length(self):
         return len(self.action_history)
 
+class Action_decoder(object):
+    def __init__(self, N_vel, N_phi):
+        #velocity can be [-N_vel, -N_vel+1, ...-1, 0, +1, ...N_vel] total 2N+1
+        self.N_vel = N_vel
+        #phi can be [-N_phi, -N_phi+1, ...-1, 0, +1, ...N_phi] total 2N+1
+        self.N_phi = N_phi
+        #all action number is 2*N_vel*(2*N_phi+1)+1, because all actions with vel==0 are equally
+        self.integer_continue_action_table = []
+        self.continue_action_table = []
+
+        # continue_action_table:
+        # [(-1,-1),(-1,0),(-1,+1),(0,0),(+1,+1),(+1,0),(+1,+1)]
+        # minus velocity part
+        for i_vel in range(self.N_vel*2+1):
+            if i_vel == self.N_vel:
+                self.integer_continue_action_table.append((0,0))
+                self.continue_action_table.append((0.0,0.0))
+            else:
+                for i_phi in range(self.N_phi*2+1):
+                    action = (i_vel-self.N_vel, i_phi-self.N_phi)
+                    self.integer_continue_action_table.append(action)
+                    continue_action = (i_vel/self.N_vel-1, i_phi/self.N_phi-1)
+                    self.continue_action_table.append(continue_action)
+        
+    def decode(self, discrete_action):
+        if isinstance(discrete_action,int):
+            return self.continue_action_table[discrete_action]
+        if isinstance(discrete_action,list):
+            continue_action = [self.continue_action_table[d_a] for d_a in discrete_action]
+            return continue_action
+        if isinstance(discrete_action,np.ndarray):
+            continue_action = np.array([self.continue_action_table[d_a] for d_a in discrete_action])
+            return continue_action
+                
+    def conti2disc(self,action):
+        index_vel = round(action[0]*self.N_vel)
+        index_phi = round(action[1]*self.N_phi)
+        return self.integer_continue_action_table.index((index_vel,index_phi))
+
+    def encode(self, continue_action):
+        if isinstance(continue_action,np.ndarray):
+            if len(continue_action.shape) == 2:
+                assert continue_action.shape[1] == 2
+                discrete_action = np.array([self.conti2disc(continue_action[idx]) for idx in range(continue_action.shape[0])])
+            elif len(continue_action.shape) == 1:
+                assert continue_action.shape[0] == 2
+                discrete_action = np.array(self.conti2disc(continue_action))
+            else:
+                print('action for encode shape not correct', continue_action)
+        elif isinstance(continue_action,list):
+            if isinstance(continue_action[0],float) or isinstance(continue_action[0],int):
+                assert len(continue_action)==2
+                discrete_action = self.conti2disc(continue_action)
+            elif isinstance(continue_action[0],np.ndarray):
+                discrete_action =[]
+                for action in continue_action:
+                    assert action.shape[0]==2
+                    discrete_action.append(self.conti2disc(action))
+            elif isinstance(continue_action[0],list) or isinstance(continue_action[0],tuple):
+                discrete_action =[]
+                for action in continue_action:
+                    assert len(action)==2
+                    discrete_action.append(self.conti2disc(action))
+        return discrete_action
+
+
+
+    
 
 class MultiCarSim(object):
 
-    def __init__(self, scenario_name, step_t = 0.1, sim_step = 100):
+    def __init__(self, scenario_name, step_t = 0.1, sim_step = 100, discrete = False, ):
         senario_dict = parse_senario(scenario_name)
         
         self.global_agent_prop = AgentProp(agent_prop=senario_dict['default_agent'])
@@ -210,6 +277,13 @@ class MultiCarSim(object):
         self.time_limit = senario_dict['common']['time_limit']
         self.reward_coef = senario_dict['common']['reward_coef']
         self.field_range = senario_dict['common']['field_range']
+        if discrete is False:
+            self.discrete = False
+            self.action_decoder = None
+        else:
+            assert len(discrete) == 2
+            self.discrete = True
+            self.action_decoder = Action_decoder(discrete[0],discrete[1])
         
         self.step_t = step_t
         self.sim_step = sim_step
@@ -547,11 +621,11 @@ class MultiCarSim(object):
 
             # if some agent crash
             if have_crash:
-                #search_stack = search_stack[:-back_number]
                 for _ in range(len(search_stack) - max(len(search_stack)-back_number,0) - 1):
                     search_stack.pop()
+                    
                 crash_index = [idx for idx,state in enumerate(new_state) if state.enable and state.crash]
-                search_stack[-1].pruning(crash_index)#,next_action_index)
+                search_stack[-1].pruning(crash_index)
                 self.set_state(search_stack[-1].state_list,total_time = search_stack[-1].time)
                 continue
             
@@ -618,15 +692,18 @@ class MultiCarSim(object):
         return reward_list
 
     def _apply_action(self, action):
-        clip_action = np.clip(action, -1.0,1.0)
+        if self.discrete is True:
+            action = self.action_decoder.decode(action)
+        else:
+            action = np.clip(action, -1.0,1.0)
         # set applied forces
         K_vel = self.global_agent_prop.K_vel
         K_phi = self.global_agent_prop.K_phi
         for idx_a in range(self.agent_number):
             state_a = self.last_state_list[idx_a]
             if state_a.movable:
-                state_a.vel_b = clip_action[idx_a][0]*K_vel
-                state_a.phi   = clip_action[idx_a][1]*K_phi
+                state_a.vel_b = action[idx_a][0]*K_vel
+                state_a.phi   = action[idx_a][1]*K_phi
             else:
                 state_a.vel_b = 0
                 state_a.phi   = 0
