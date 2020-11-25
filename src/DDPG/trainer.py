@@ -132,7 +132,7 @@ class DDPG_trainer(object):
         trajectoy = self.env.get_trajectoy()
         train_sample = len(trajectoy)
         for trans in trajectoy:
-            for agent_idx in range(len(trans)):
+            for agent_idx in range(len(trans['obs'])):
                 self.agent.memory.append( trans['obs'][agent_idx], 
                                           trans['action'][agent_idx],
                                           trans['reward'][agent_idx],

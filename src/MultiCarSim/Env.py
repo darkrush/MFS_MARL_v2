@@ -503,7 +503,17 @@ class MultiCarSim(object):
         while True:
             # count DFS_step
             DFS_step = DFS_step + 1
+            
+            # finish if DFS_step beyond MAX_STEP
+            if DFS_step >= MAX_STEP:
+                DFS_flag = 'MAX'
+                break
 
+            # finish if stack is empty (no path is avaliable)
+            if len(search_stack) == 0:
+                DFS_flag = 'NO_PATH'
+                break
+            
             # pop and get the next action index of the last node to build new node
             next_action_index = search_stack[-1].pop_next_action_index()
 
@@ -552,16 +562,6 @@ class MultiCarSim(object):
             all_reach = all([state.reach or not state.enable for state in new_state]) 
             if all_reach:
                 DFS_flag = 'ALL_REACH'
-                break
-            
-            # finish if DFS_step beyond MAX_STEP
-            if DFS_step >= MAX_STEP:
-                DFS_flag = 'MAX'
-                break
-
-            # finish if stack is empty (no path is avaliable)
-            if len(search_stack) == 0:
-                DFS_flag = 'NO_PATH'
                 break
 
         if DFS_flag == 'MAX' or DFS_flag == 'NO_PATH':
