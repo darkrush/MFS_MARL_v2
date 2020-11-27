@@ -1,9 +1,11 @@
 # MultiCarSim
 
-\_\_init\_\_(self, scenario_name, step_t = 0.1, sim_step = 100)
+\_\_init\_\_(self, scenario_name, step_t = 0.1, sim_step = 100, , discrete = False, one_hot = False)
 - scenario_name : scenario.yaml文件路径
 - step_t : 每一个step的仿真时长，意味着一个step后total_time增加step_t
 - sim_step: 每个step_t被分为sim_step个间隔进行仿真，sim_step越大仿真间隔越细，执行耗时也越长。[v1中使用sim_t=step_t/sim_step表示]
+- discrete: 表示是否使用离散任务，discrete = False 为连续任务，discrete = [N_vel, N_phi]为离散任务，具体设定见后面内容
+- one_hot: 表示在离散任务是否使用one_hot向量为输入
 
 reset(self)[step 和 rollout前需要调用reset]
 
@@ -32,3 +34,5 @@ MultiCarSim(scenario_name, step_t = 0.1, sim_step = 100, discrete = False):
 动作顺序为[(-1,-1),(-1,0),(-1,1),(0,0),(1,-1),(1,0),(1,1)]
 
 生成动作序列的代码见src/MultiCarSim/Env.py 中的 Action_decoder类
+
+加入了

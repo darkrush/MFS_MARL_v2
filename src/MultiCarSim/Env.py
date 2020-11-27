@@ -194,15 +194,17 @@ class history(object):
         return len(self.action_history)
 
 class Action_decoder(object):
-    def __init__(self, N_vel, N_phi):
+    def __init__(self, N_vel, N_phi, one_hot):
         #velocity can be [-N_vel, -N_vel+1, ...-1, 0, +1, ...N_vel] total 2N+1
         self.N_vel = N_vel
         #phi can be [-N_phi, -N_phi+1, ...-1, 0, +1, ...N_phi] total 2N+1
         self.N_phi = N_phi
+        self.action_number = 2*N_vel*(2*N_phi+1)+1
         #all action number is 2*N_vel*(2*N_phi+1)+1, because all actions with vel==0 are equally
         self.integer_continue_action_table = []
         self.continue_action_table = []
 
+        self.one_hot = one_hot
         # continue_action_table:
         # [(-1,-1),(-1,0),(-1,+1),(0,0),(+1,+1),(+1,0),(+1,+1)]
         # minus velocity part
@@ -217,20 +219,43 @@ class Action_decoder(object):
                     continue_action = (i_vel/self.N_vel-1, i_phi/self.N_phi-1)
                     self.continue_action_table.append(continue_action)
         
+        
     def decode(self, discrete_action):
-        if isinstance(discrete_action,int):
-            return self.continue_action_table[discrete_action]
-        if isinstance(discrete_action,list):
-            continue_action = [self.continue_action_table[d_a] for d_a in discrete_action]
-            return continue_action
-        if isinstance(discrete_action,np.ndarray):
-            continue_action = np.array([self.continue_action_table[d_a] for d_a in discrete_action])
-            return continue_action
-                
+        if not self.one_hot:
+            #one simple action
+            if isinstance(discrete_action,int):
+                continue_action = self.continue_action_table[discrete_action]
+            #list of int action
+            if isinstance(discrete_action,list):
+                continue_action = [self.continue_action_table[d_a] for d_a in discrete_action]
+            #np array int action
+            if isinstance(discrete_action,np.ndarray):
+                continue_action = np.array([self.continue_action_table[d_a] for d_a in discrete_action])
+        else:
+            if isinstance(discrete_action,list):
+                #list of onehot ndarray
+                if isinstance(discrete_action[0],np.ndarray):
+                    assert len(discrete_action[0].shape) = 1
+                    continue_action = [self.continue_action_table[d_a.argmax()] for d_a in discrete_action]
+                #list of onehot list
+                if isinstance(discrete_action[0],list):
+                    assert isinstance(discrete_action[0][0], float)
+                    continue_action = [self.continue_action_table[d_a.index(max(d_a))] for d_a in discrete_action]
+            #2d np array onehot
+            elif isinstance(discrete_action, np.ndarray):
+                assert len(discrete_action.shape) ==2
+                continue_action = np.array([self.continue_action_table[d_a.argmax()] for d_a in discrete_action])
+        return continue_action
     def conti2disc(self,action):
         index_vel = round(action[0]*self.N_vel)
         index_phi = round(action[1]*self.N_phi)
-        return self.integer_continue_action_table.index((index_vel,index_phi))
+        action_index = self.integer_continue_action_table.index((index_vel,index_phi))
+        if not self.one_hot:
+            return action_index
+        else:
+            one_hot_result = [0.0]*self.action_number
+            one_hot_result[action_index] = 1.0
+            return one_hot_result
 
     def encode(self, continue_action):
         if isinstance(continue_action,np.ndarray):
@@ -250,7 +275,7 @@ class Action_decoder(object):
                 discrete_action =[]
                 for action in continue_action:
                     assert action.shape[0]==2
-                    discrete_action.append(self.conti2disc(action))
+                    discrete_action.append(np.array(self.conti2disc(action)))
             elif isinstance(continue_action[0],list) or isinstance(continue_action[0],tuple):
                 discrete_action =[]
                 for action in continue_action:
@@ -259,12 +284,9 @@ class Action_decoder(object):
         return discrete_action
 
 
-
-    
-
 class MultiCarSim(object):
 
-    def __init__(self, scenario_name, step_t = 0.1, sim_step = 100, discrete = False):
+    def __init__(self, scenario_name, step_t = 0.1, sim_step = 100, discrete = False, one_hot = False):
         senario_dict = parse_senario(scenario_name)
         
         self.global_agent_prop = AgentProp(agent_prop=senario_dict['default_agent'])
@@ -283,7 +305,9 @@ class MultiCarSim(object):
         else:
             assert len(discrete) == 2
             self.discrete = True
-            self.action_decoder = Action_decoder(discrete[0],discrete[1])
+            self.action_decoder = Action_decoder(discrete[0],discrete[1], self.one_hot)
+
+        self.one_hot = one_hot
         
         self.step_t = step_t
         self.sim_step = sim_step
@@ -544,6 +568,7 @@ class MultiCarSim(object):
         result['crash_time'] = crash_time
         result['reach_time'] = reach_time
         result['total_reward'] = total_reward
+        result['no_potential_reward'] = reach_time*self.reward_coef['reach'] - crash_time*self.reward_coef['crash']
         result['total_time'] = self.history.time_history[-1]
         result['mean_vel'] = sum(vel_list)/len(vel_list)
         return result

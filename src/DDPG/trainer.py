@@ -146,6 +146,7 @@ class DDPG_trainer(object):
         log_info = {'train_total_reward': results['total_reward'],
                     'train_crash_time': results['crash_time'],
                     'train_reach_time': results['reach_time'],
+                    'train_no_potential_reward': results['no_potential_reward'],
                     'train_mean_vel': results['mean_vel'],
                     'train_total_time': results['total_time'],
                     'train_critic_loss': critic_loss,
