@@ -235,7 +235,7 @@ class Action_decoder(object):
             if isinstance(discrete_action,list):
                 #list of onehot ndarray
                 if isinstance(discrete_action[0],np.ndarray):
-                    assert len(discrete_action[0].shape) = 1
+                    assert len(discrete_action[0].shape) == 1
                     continue_action = [self.continue_action_table[d_a.argmax()] for d_a in discrete_action]
                 #list of onehot list
                 if isinstance(discrete_action[0],list):
