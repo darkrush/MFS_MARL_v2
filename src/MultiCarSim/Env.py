@@ -264,7 +264,7 @@ class Action_decoder(object):
 
 class MultiCarSim(object):
 
-    def __init__(self, scenario_name, step_t = 0.1, sim_step = 100, discrete = False, ):
+    def __init__(self, scenario_name, step_t = 0.1, sim_step = 100, discrete = False):
         senario_dict = parse_senario(scenario_name)
         
         self.global_agent_prop = AgentProp(agent_prop=senario_dict['default_agent'])
