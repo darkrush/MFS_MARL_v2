@@ -570,7 +570,7 @@ class MultiCarSim(object):
         result['crash_time'] = crash_time
         result['reach_time'] = reach_time
         result['total_reward'] = total_reward
-        result['no_potential_reward'] = reach_time*self.reward_coef['reach'] - crash_time*self.reward_coef['crash']
+        result['no_potential_reward'] = reach_time*self.reward_coef['reach'] + crash_time*self.reward_coef['crash']
         result['total_time'] = self.history.time_history[-1]
         result['mean_vel'] = sum(vel_list)/len(vel_list)
         return result
