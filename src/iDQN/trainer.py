@@ -4,12 +4,6 @@ from copy import deepcopy
 from .DQN import DQN
 from .policy import NN_policy, Mix_policy, Agent_Mix_policy
 
-#ACTION_TABLE = np.array(((-1,-1),(-1,0),(-1,1),(0,0),(1,-1),(1,0),(1,1)))
-
-def conti2dis(conti_action):
-    dis_action = int(conti_action[0]*2+conti_action[1]+3)
-    return dis_action
-
 class Crash_Checker(object):
     def __init__(self):
         self.mask = []
@@ -18,10 +12,10 @@ class Crash_Checker(object):
         self.mask = mask
     def set_p(self,p):
         self.p = p
-    def check_crash(self,state_list):
+    def check_crash(self,crash_list):
         if random.random() < self.p:
-            for idx,state in enumerate(state_list):
-                if state.crash :
+            for idx,crash in enumerate(crash_list):
+                if crash :
                     if idx in self.mask:
                         self.mask.remove(idx)
                         continue
@@ -30,7 +24,6 @@ class Crash_Checker(object):
         return False
 
 class DQN_trainer(object):
-#    def __init__(self, train_args, agent_args, model_args):
     def __init__(self, args_dict):
         self.args_dict = args_dict
         self.nb_epoch = args_dict['nb_epoch']
@@ -41,6 +34,7 @@ class DQN_trainer(object):
         self.train_mode = args_dict['train_mode']
         self.search_method= args_dict['search_method']
         self.back_step = args_dict['back_step']
+        self.multi_step = args_dict['multi_step']
         self.expert_file = args_dict['expert_file']
 
         self.agent = DQN(args_dict)
@@ -49,7 +43,7 @@ class DQN_trainer(object):
         self.env = env_instance
         self.search_env = search_env_instance
         self.eval_env = eval_env_instance
-
+        self.encoder = self.env.action_decoder.encode
         n_v = self.args_dict['nb_vel']
         n_p = self.args_dict['nb_phi']
         self.nb_actions = n_v*2*(2*n_p+1)+1
@@ -63,6 +57,7 @@ class DQN_trainer(object):
     
     def cycle(self, epsilon):
         self.env.reset()
+        self.search_env.reset()
         crash_checker = Crash_Checker()
         crash_checker.set_p(epsilon)
         #get trajection
@@ -73,7 +68,7 @@ class DQN_trainer(object):
         search_step = 0
         while True:
             if self.search_method is 1 :
-                rollout_policy = Mix_policy(self.agent.Qnetwork,epsilon,search_policy,replace_table,action_number=self.nb_actions)
+                rollout_policy = Mix_policy(self.agent.Qnetwork,epsilon,search_policy,replace_table,action_number=self.nb_actions,encoder=self.encoder)
                 finish = self.env.rollout(rollout_policy.inference, pause_call_back = crash_checker.check_crash)
             elif self.search_method is 2 :
                 rollout_policy = Agent_Mix_policy(self.agent.Qnetwork,epsilon,self.expert_Qnetwork,replace_table,action_number=self.nb_actions)

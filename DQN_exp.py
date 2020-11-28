@@ -19,6 +19,7 @@ def parse_arg():
     parser.add_argument('--decay-coef', default=0.5, type=float, help='decay coef')
     parser.add_argument('--search-method', default = 0, type=int, help='1 if do policy search')
     parser.add_argument('--back-step', default = 7, type=int, help='back step for search policy')
+    parser.add_argument('--multi-step', default = 2, type=int, help='multi search step for search policy')
     parser.add_argument('--seed', default=0, type=int, help='random_seed')
     parser.add_argument('--expert-file', default='./expert.pkl', type=str, help='expert actor file dir')
     parser.add_argument('--cuda', default=1, type=int, help='cuda')

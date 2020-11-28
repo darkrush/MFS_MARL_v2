@@ -37,13 +37,14 @@ class NN_policy(object):
         return action_list
 
 class Mix_policy(object):
-    def __init__(self,Qnetwork,epsilon,search_policy,replace_table,action_number):
+    def __init__(self,Qnetwork,epsilon,search_policy,replace_table,action_number,encoder):
         self.Qnetwork = copy.deepcopy(Qnetwork)
         self.epsilon = epsilon 
         self.search_policy = search_policy
         self.replace_table = replace_table
         self.action_number = action_number
         self.step = 0
+        self.encoder = encoder
         # Check Qnetwork is on cuda or not
         self.cuda = next(self.Qnetwork.parameters()).is_cuda
     def inference(self,obs_list,state_list):
@@ -62,7 +63,7 @@ class Mix_policy(object):
             if self.step<len(self.search_policy):
                 for agent_idx in range(len(action_list)):
                     if self.replace_table[self.step][agent_idx] >=0:
-                        action_list[agent_idx] = self.search_policy[self.step][agent_idx]
+                        action_list[agent_idx] = self.encoder(self.search_policy[self.step][agent_idx])
             self.step+=1
         return action_list     
 

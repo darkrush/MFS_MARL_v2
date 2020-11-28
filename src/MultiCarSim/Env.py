@@ -226,19 +226,19 @@ class Action_decoder(object):
             if isinstance(discrete_action,int):
                 continue_action = self.continue_action_table[discrete_action]
             #list of int action
-            if isinstance(discrete_action,list):
+            if isinstance(discrete_action,list) or isinstance(discrete_action,tuple):
                 continue_action = [self.continue_action_table[d_a] for d_a in discrete_action]
             #np array int action
             if isinstance(discrete_action,np.ndarray):
                 continue_action = np.array([self.continue_action_table[d_a] for d_a in discrete_action])
         else:
-            if isinstance(discrete_action,list):
+            if isinstance(discrete_action,list) or isinstance(discrete_action,tuple):
                 #list of onehot ndarray
                 if isinstance(discrete_action[0],np.ndarray):
                     assert len(discrete_action[0].shape) == 1
                     continue_action = [self.continue_action_table[d_a.argmax()] for d_a in discrete_action]
                 #list of onehot list
-                if isinstance(discrete_action[0],list):
+                if isinstance(discrete_action[0],list) or isinstance(discrete_action[0],tuple):
                     assert isinstance(discrete_action[0][0], float)
                     continue_action = [self.continue_action_table[d_a.index(max(d_a))] for d_a in discrete_action]
             #2d np array onehot
@@ -267,7 +267,7 @@ class Action_decoder(object):
                 discrete_action = np.array(self.conti2disc(continue_action))
             else:
                 print('action for encode shape not correct', continue_action)
-        elif isinstance(continue_action,list):
+        elif isinstance(continue_action,list) or  isinstance(continue_action,tuple) :
             if isinstance(continue_action[0],float) or isinstance(continue_action[0],int):
                 assert len(continue_action)==2
                 discrete_action = self.conti2disc(continue_action)
@@ -299,6 +299,7 @@ class MultiCarSim(object):
         self.time_limit = senario_dict['common']['time_limit']
         self.reward_coef = senario_dict['common']['reward_coef']
         self.field_range = senario_dict['common']['field_range']
+        self.one_hot = one_hot
         if discrete is False:
             self.discrete = False
             self.action_decoder = None
@@ -307,7 +308,7 @@ class MultiCarSim(object):
             self.discrete = True
             self.action_decoder = Action_decoder(discrete[0],discrete[1], self.one_hot)
 
-        self.one_hot = one_hot
+        
         
         self.step_t = step_t
         self.sim_step = sim_step
@@ -394,8 +395,9 @@ class MultiCarSim(object):
             ct = np.cos(state.theta)
             related_x = xt*ct+yt*st
             related_y = yt*ct-xt*st
-            pos = np.array([related_x,related_y])
-            obs_list.append([pos,self.laser_state_list[idx]])
+            related_pos = np.array([related_x,related_y])
+            real_pos = np.array([state.x, state.y, ct, st, state.target_x, state.target_y])
+            obs_list.append([related_pos,self.laser_state_list[idx],real_pos])
         return obs_list
 
     def render(self, mode='human'):

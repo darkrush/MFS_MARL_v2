@@ -28,7 +28,7 @@ def run_DQN(args_dict, run_instance = None):
     # setup environment instance for trainning, searching policy and evaluation
     discrete = [args_dict['nb_vel'],args_dict['nb_phi']]
     train_env = get_env(args_dict['train_env'], step_t=args_dict['step_t'], sim_step=args_dict['train_sim_step'],discrete = discrete)
-    search_env = get_env(args_dict['search_env'], step_t=args_dict['step_t'], sim_step=args_dict['search_sim_step'],discrete = discrete)
+    search_env = get_env(args_dict['search_env'], step_t=args_dict['step_t'], sim_step=args_dict['search_sim_step'],discrete = False)
     eval_env = get_env(args_dict['eval_env'], step_t=args_dict['step_t'], sim_step=args_dict['eval_sim_step'],discrete = discrete)
 
     # setup DQN trainer.
