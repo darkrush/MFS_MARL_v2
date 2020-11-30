@@ -47,7 +47,8 @@ class DDPG(object):
         self.actor_optim = Adam(self.actor.parameters(), lr=self.actor_lr)
         self.memory = Memory(limit=self.buffer_size,
                              action_shape=(self.args_dict['nb_actions'],),
-                             observation_shape=[(self.args_dict['nb_pos'],), (self.args_dict['nb_laser'],)])
+                             observation_shape=[(self.args_dict['nb_pos'],), (self.args_dict['nb_laser'],), (6,)])
+                             
         
     def cuda(self):
         self.memory.cuda()

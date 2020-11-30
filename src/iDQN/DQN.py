@@ -39,7 +39,7 @@ class DQN(object):
         self.Qnetwork_optim = Adam(params = p_groups, lr=self.Qnetwork_lr, weight_decay = self.l2_Qnetwork)
         self.memory = Memory(limit=self.buffer_size,
                              action_shape=(1,),
-                             observation_shape=[(self.args_dict['nb_pos'],), (self.args_dict['nb_laser'],)])
+                             observation_shape=[(self.args_dict['nb_pos'],), (self.args_dict['nb_laser'],), (6,)])
         
     def cuda(self):
         self.memory.cuda()

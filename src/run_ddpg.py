@@ -12,6 +12,10 @@ def get_env(scenario_name, step_t, sim_step):
     return env
 
 def run_ddpg(args_dict, run_instance = None):
+
+    if torch.cuda.device_count() ==0:
+        args_dict['cuda'] = 0
+
     # set seed for reproducibility
     manualSeed = args_dict['seed']
     np.random.seed(manualSeed)
