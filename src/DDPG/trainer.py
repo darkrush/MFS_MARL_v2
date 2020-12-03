@@ -62,7 +62,7 @@ class DDPG_trainer(object):
         self.agent.save_model('./')
         return pretrain_loss_list
     
-    def cycle(self, epsilon, train_actor):
+    def cycle(self, epsilon, train_actor,no_exploration = 0):
         self.env.reset()
         self.search_env.reset()
         crash_checker = Crash_Checker()
@@ -74,14 +74,19 @@ class DDPG_trainer(object):
         last_back_index = 0
         search_step = 0
         while True:
+            if no_exploration == 1:
+                epsilon_explr = 0
+            else:
+                epsilon_explr = epsilon
+
             if self.search_method is 1 :
-                rollout_policy = Mix_policy(self.agent.actor,epsilon,search_policy,replace_table)
+                rollout_policy = Mix_policy(self.agent.actor,epsilon_explr,search_policy,replace_table)
                 finish = self.env.rollout(rollout_policy.inference, pause_call_back = crash_checker.check_crash)
             elif self.search_method is 2 :
-                rollout_policy = Agent_Mix_policy(self.agent.actor,epsilon,self.expert_actor,replace_table)
+                rollout_policy = Agent_Mix_policy(self.agent.actor,epsilon_explr,self.expert_actor,replace_table)
                 finish = self.env.rollout(rollout_policy.inference, pause_call_back = crash_checker.check_crash)
             else:
-                rollout_policy = Mix_policy(self.agent.actor,epsilon,None,None)
+                rollout_policy = Mix_policy(self.agent.actor,epsilon_explr,None,None)
                 finish = self.env.rollout(rollout_policy.inference)
             if finish is 'finish' :
                 break

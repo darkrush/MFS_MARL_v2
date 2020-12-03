@@ -55,7 +55,7 @@ class DQN_trainer(object):
     def cuda(self):
         self.agent.cuda()
     
-    def cycle(self, epsilon):
+    def cycle(self, epsilon, no_exploration=0):
         self.env.reset()
         self.search_env.reset()
         crash_checker = Crash_Checker()
@@ -67,14 +67,18 @@ class DQN_trainer(object):
         last_back_index = 0
         search_step = 0
         while True:
+            if no_exploration == 1:
+                epsilon_explr = 0
+            else:
+                epsilon_explr = epsilon
             if self.search_method is 1 :
-                rollout_policy = Mix_policy(self.agent.Qnetwork,epsilon,search_policy,replace_table,action_number=self.nb_actions,encoder=self.encoder)
+                rollout_policy = Mix_policy(self.agent.Qnetwork,epsilon_explr,search_policy,replace_table,action_number=self.nb_actions,encoder=self.encoder)
                 finish = self.env.rollout(rollout_policy.inference, pause_call_back = crash_checker.check_crash)
             elif self.search_method is 2 :
-                rollout_policy = Agent_Mix_policy(self.agent.Qnetwork,epsilon,self.expert_Qnetwork,replace_table,action_number=self.nb_actions)
+                rollout_policy = Agent_Mix_policy(self.agent.Qnetwork,epsilon_explr,self.expert_Qnetwork,replace_table,action_number=self.nb_actions)
                 finish = self.env.rollout(rollout_policy.inference, pause_call_back = crash_checker.check_crash)
             else:
-                rollout_policy = Mix_policy(self.agent.Qnetwork,epsilon,None,None,action_number=self.nb_actions)
+                rollout_policy = Mix_policy(self.agent.Qnetwork,epsilon_explr,None,None,action_number=self.nb_actions,encoder=self.encoder)
                 finish = self.env.rollout(rollout_policy.inference)
             if finish is 'finish' :
                 break

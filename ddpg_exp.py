@@ -24,7 +24,7 @@ def parse_arg():
     parser.add_argument('--expert-file', default='./expert.pkl', type=str, help='expert actor file dir')
     parser.add_argument('--cuda', default=1, type=int, help='cuda')
     parser.add_argument('--sync-step', default=1, type=int, help='1:Sync step for MARL,0:Async step for RL')
-
+    parser.add_argument('--no-exploration',default=0, type=int, help='1:no e-greedy exploration 0:with e-greedy'))
     
     #DDPG args
     parser.add_argument('--actor-lr', default=0.001, type=float, help='actor net learning rate')

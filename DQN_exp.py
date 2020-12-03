@@ -23,6 +23,7 @@ def parse_arg():
     parser.add_argument('--seed', default=0, type=int, help='random_seed')
     parser.add_argument('--expert-file', default='./expert.pkl', type=str, help='expert actor file dir')
     parser.add_argument('--cuda', default=1, type=int, help='cuda')
+    parser.add_argument('--no-exploration',default=0, type=int, help='1:no e-greedy exploration 0:with e-greedy'))
     
     #DQN args
     parser.add_argument('--Qnetwork-lr', default=0.01, type=float, help='critic net learning rate')

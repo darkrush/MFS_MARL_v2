@@ -56,7 +56,7 @@ def run_DQN(args_dict, run_instance = None):
         epsilon = 0.1**((epoch/args_dict['nb_epoch'])/args_dict['decay_coef'])
         for cycle in range(args_dict['nb_cycles_per_epoch']):
             # Do training in cycle-way. In each cycle, rollout one trajectory and update critic and actor.
-            log_info = trainer.cycle(epsilon = epsilon)
+            log_info = trainer.cycle(epsilon = epsilon, no_exploration = args_dict['no_exploration'])
 
             #Calculate total serach step in trainning
             total_search_sample += log_info['train_search_step']
