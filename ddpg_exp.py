@@ -46,6 +46,9 @@ def parse_arg():
     parser.add_argument('--nb-actions', default=2, type=int, help='number of actions')
     
     #Env args
+    parser.add_argument('--reach', default=10.0, type=float, help='reach reward')
+    parser.add_argument('--crash', default=-10.0, type=float, help='crash reward')
+    parser.add_argument('--potential', default=1.0, type=float, help='potential coef')
     parser.add_argument('--train-env', default='./src/scenario/scenario_train.yaml', type=str, help='train env file')
     parser.add_argument('--search-env', default='./src/scenario/scenario_search.yaml', type=str, help='search env file')
     parser.add_argument('--eval-env', default='./src/scenario/scenario_train.yaml', type=str, help='eval env file')

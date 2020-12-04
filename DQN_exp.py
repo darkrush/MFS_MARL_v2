@@ -11,7 +11,7 @@ def parse_arg():
     parser.add_argument('--job-type', default='debug', type=str, help='jobv type of this exp')
     #Training args
     parser.add_argument('--nb-epoch', default=100, type=int, help='number of epochs')
-    parser.add_argument('--nb-cycles-per-epoch', default=100, type=int, help='number of cycles per epoch')
+    parser.add_argument('--nb-cycles-per-epoch', default=20, type=int, help='number of cycles per epoch')
     parser.add_argument('--nb-rollout-steps', default=100, type=int, help='number rollout steps')
     parser.add_argument('--nb-train-steps', default=20, type=int, help='number train steps')
     parser.add_argument('--nb-warmup-steps', default=100, type=int, help='time without training but only filling the replay memory')
@@ -23,10 +23,10 @@ def parse_arg():
     parser.add_argument('--seed', default=0, type=int, help='random_seed')
     parser.add_argument('--expert-file', default='./expert.pkl', type=str, help='expert actor file dir')
     parser.add_argument('--cuda', default=1, type=int, help='cuda')
-    parser.add_argument('--no-exploration',default=0, type=int, help='1:no e-greedy exploration 0:with e-greedy')
+    parser.add_argument('--no-exploration',default=1, type=int, help='1:no e-greedy exploration 0:with e-greedy')
 
     #DQN args
-    parser.add_argument('--Qnetwork-lr', default=0.01, type=float, help='critic net learning rate')
+    parser.add_argument('--Qnetwork-lr', default=0.0003, type=float, help='critic net learning rate')
     parser.add_argument('--lr-decay', default=10.0, type=float, help='critic lr decay')
     parser.add_argument('--l2_Qnetwork', default=0.01, type=float, help='critic l2 regularization')
     parser.add_argument('--discount', default=0.99, type=float, help='reward discout')
@@ -45,6 +45,9 @@ def parse_arg():
     parser.add_argument('--nb-phi', default=1, type=int, help='level of phi')
     
     #Env args
+    parser.add_argument('--reach', default=10.0, type=float, help='reach reward')
+    parser.add_argument('--crash', default=-10.0, type=float, help='crash reward')
+    parser.add_argument('--potential', default=1.0, type=float, help='potential coef')
     parser.add_argument('--train-env', default='./src/scenario/scenario_train.yaml', type=str, help='train env file')
     parser.add_argument('--search-env', default='./src/scenario/scenario_search.yaml', type=str, help='search env file')
     parser.add_argument('--eval-env', default='./src/scenario/scenario_train.yaml', type=str, help='eval env file')

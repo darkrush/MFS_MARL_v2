@@ -34,6 +34,10 @@ def run_DQN(args_dict, run_instance = None):
     train_env = get_env(args_dict['train_env'], step_t=args_dict['step_t'], sim_step=args_dict['train_sim_step'],discrete = discrete)
     search_env = get_env(args_dict['search_env'], step_t=args_dict['step_t'], sim_step=args_dict['search_sim_step'],discrete = False)
     eval_env = get_env(args_dict['eval_env'], step_t=args_dict['step_t'], sim_step=args_dict['eval_sim_step'],discrete = discrete)
+    for env in [train_env, search_env, eval_env]:
+        env.reward_coef['reach'] = args_dict['reach']
+        env.reward_coef['crash'] = args_dict['crash']
+        env.reward_coef['potential'] = args_dict['potential']
 
     # setup DQN trainer.
     trainer = DQN_trainer(args_dict)
@@ -66,6 +70,8 @@ def run_DQN(args_dict, run_instance = None):
             total_train_sample += log_info['train_train_step']
             log_info['train_total_train_sample'] = total_train_sample
 
+            log_info['cycle_count'] = cycle_count
+
             # Do log recording by wandb.
             if run_instance is not None:
                 run_instance.log(log_info)
@@ -94,5 +100,6 @@ def run_DQN(args_dict, run_instance = None):
 
         # eval_task
         result = trainer.eval()
+        result['epoch'] = epoch
         if run_instance is not None:
             run_instance.log(result)
