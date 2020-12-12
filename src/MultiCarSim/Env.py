@@ -286,16 +286,12 @@ class Action_decoder(object):
 
 class MultiCarSim(object):
 
-    def __init__(self, scenario_name, step_t = 0.1, sim_step = 100, discrete = False, one_hot = False):
+    def __init__(self, scenario_name, step_t = 0.1, sim_step = 100,
+                 agent_number = 0, discrete = False, one_hot = False):
         senario_dict = parse_senario(scenario_name)
         
-        self.global_agent_prop = AgentProp(agent_prop=senario_dict['default_agent'])
+        self.global_agent_prop = AgentProp(senario_dict['default_agent'])
 
-        self.agent_number = 0
-        for (_,agent_group) in senario_dict['agent_groups'].items():
-            for agent_prop in agent_group:
-                self.agent_number += 1
-        
         self.time_limit = senario_dict['common']['time_limit']
         self.reward_coef = senario_dict['common']['reward_coef']
         self.field_range = senario_dict['common']['field_range']
@@ -306,7 +302,9 @@ class MultiCarSim(object):
         else:
             assert len(discrete) == 2
             self.discrete = True
-            self.action_decoder = Action_decoder(discrete[0],discrete[1], self.one_hot)
+            self.action_decoder = Action_decoder(discrete[0],
+                                                 discrete[1],
+                                                self.one_hot)
 
         
         
@@ -318,11 +316,18 @@ class MultiCarSim(object):
 
         # reset_mode is 'random' or 'init'
         self.reset_mode = senario_dict['common']['reset_mode']
+        
+        if agent_number >0 and self.reset_mode == 'random':
+            self.agent_number = agent_number
+        else:
+            group_list = senario_dict['agent_groups'].values()
+            self.agent_number = sum([len(group) for group in group_list])
+
         if self.reset_mode =='random':
             self.ref_state_list = None
         elif self.reset_mode =='init':
             self.ref_state_list = []
-            for (_,grop) in senario_dict['agent_groups'].items():
+            for grop in senario_dict['agent_groups'].values():
                 for agent_prop in grop:
                     agent = AgentProp(agent_prop)
                     state = AgentState()
@@ -575,14 +580,13 @@ class MultiCarSim(object):
         result['mean_vel'] = sum(vel_list)/len(vel_list)
         return result
 
-    def search_policy(self, multi_step = 2, back_number = 1, use_gui = False):
+    def search_policy(self, multi_step = 2, back_number = 1, use_gui = False, MAX_STEP = 1e4):
         # path_calculator by naive policy
         path_calc = path_calculator(self.global_agent_prop.K_phi,
                                     self.global_agent_prop.L_axis,
                                     self.global_agent_prop.R_reach)
         
         # count the total DFS_step and stop searching if reach MAX_STEP
-        MAX_STEP = 1e4
         DFS_step = 0
         
         #count the total simulation step and stop searching if reach MAX_STEP
