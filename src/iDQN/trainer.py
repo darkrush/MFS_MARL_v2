@@ -2,7 +2,7 @@ import torch
 import random
 from copy import deepcopy
 from .DQN import DQN
-from .policy import NN_policy, Mix_policy, Agent_Mix_policy
+from .policy import Mix_policy, Agent_Mix_policy
 
 class Crash_Checker(object):
     def __init__(self):
@@ -159,7 +159,7 @@ class DQN_trainer(object):
 
     def eval(self):
         self.eval_env.reset()
-        rollout_policy = NN_policy(self.agent.Qnetwork,0,self.nb_actions)
+        rollout_policy = Mix_policy(self.agent.Qnetwork,epsilon_explr,None,None,action_number=self.nb_actions,encoder=self.encoder)
         self.eval_env.rollout(rollout_policy.inference)
         results = self.eval_env.get_result()
         return results

@@ -16,26 +16,6 @@ def naive_inference(xt,yt,dist=0.2,min_r=0.65):
         phi = -1 if (bool(in_min_r) ^ bool(yt<0)) else 1
     return vel,phi
 
-class NN_policy(object):
-    def __init__(self, Qnetwork, epsilon, action_number):
-        self.Qnetwork = copy.deepcopy(Qnetwork)   
-        self.epsilon = epsilon 
-        self.action_number = action_number
-        self.cuda = next(self.Qnetwork.parameters()).is_cuda
-    def inference(self,obs_list,state_list):
-        with torch.no_grad():
-            pos = torch.Tensor(np.vstack([obs[0] for obs in obs_list]))
-            laser_data = torch.Tensor(np.vstack([obs[1] for obs in obs_list]))
-            if self.cuda:
-                pos = pos.cuda()
-                laser_data = laser_data.cuda()
-            qvalue = self.Qnetwork(pos,laser_data).cpu().numpy()
-            action_list = np.argmax(qvalue,1)
-        if random.random() <self.epsilon:
-            action_list = np.random.randint(self.action_number,size=(action_list.shape[0]))
-
-        return action_list
-
 class Mix_policy(object):
     def __init__(self,Qnetwork,epsilon,search_policy,replace_table,action_number,encoder):
         self.Qnetwork = copy.deepcopy(Qnetwork)
@@ -92,8 +72,8 @@ class Agent_Mix_policy(object):
 
         if self.replace_list is not None:
             with torch.no_grad():
-                qvalue_replace = self.Qnetwork(pos,laser_data).cpu().numpy()
-                action_replace = dis2conti(np.argmax(qvalue_replace,1))
+                qvalue_replace = self.expert_Qnetwork(pos,laser_data).cpu().numpy()
+                action_replace = np.argmax(qvalue_replace,1)
             for agent_idx in self.replace_list:
                 if state_list[agent_idx].crash or state_list[agent_idx].reach:
                     self.replace_list.remove(agent_idx)

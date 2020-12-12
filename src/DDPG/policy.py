@@ -14,33 +14,6 @@ def naive_inference(xt,yt,dist=0.2,min_r=0.65):
         phi = -1 if (bool(in_min_r) ^ bool(yt<0)) else 1
     return vel,phi
 
-class NN_policy(object):
-    def __init__(self,actor,epsilon,min_dis = 0):
-        self.actor = copy.deepcopy(actor)   
-        self.epsilon = epsilon 
-        self.min_dis = min_dis
-        self.cuda = next(self.actor.parameters()).is_cuda
-    def inference(self,obs_list,state_list):
-        with torch.no_grad():
-            pos = torch.Tensor(np.vstack([obs[0] for obs in obs_list]))
-            laser_data = torch.Tensor(np.vstack([obs[1] for obs in obs_list]))
-            if self.cuda:
-                pos = pos.cuda()
-                laser_data = laser_data.cuda()
-            action = self.actor(pos,laser_data).cpu().numpy()
-        if random.random() <self.epsilon:
-            action = np.random.normal(0,1,action.shape)
-        action = np.clip(action, -1., 1.)
-        action_list = []
-        for idx in range(len(obs_list)):
-            xt = obs_list[idx][0][0]
-            yt = obs_list[idx][0][1]
-            if xt**2+yt**2 < self.min_dis**2:
-                a = naive_inference(xt,yt)
-            else:
-                a = [float(action[idx,0]),float(action[idx,1])]
-            action_list.append(a)
-        return action_list
 
 class Mix_policy(object):
     def __init__(self,actor,epsilon,search_policy,replace_table,min_dis = 0):

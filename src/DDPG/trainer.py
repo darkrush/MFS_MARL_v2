@@ -2,7 +2,7 @@ import torch
 import random
 from copy import deepcopy
 from .ddpg import DDPG
-from .policy import NN_policy, Mix_policy, Agent_Mix_policy
+from .policy import Mix_policy, Agent_Mix_policy
 
 class Crash_Checker(object):
     def __init__(self):
@@ -168,7 +168,7 @@ class DDPG_trainer(object):
 
     def eval(self):
         self.eval_env.reset()
-        rollout_policy = NN_policy(self.agent.actor,0)
+        rollout_policy = Mix_policy(self.agent.actor,epsilon_explr,None,None)
         self.eval_env.rollout(rollout_policy.inference)
         results = self.eval_env.get_result()
         return results
