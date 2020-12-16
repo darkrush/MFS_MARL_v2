@@ -11,12 +11,15 @@ def parse_arg():
     parser.add_argument('--job-type', default='debug', type=str, help='jobv type of this exp')
     #Training args
     parser.add_argument('--nb-epoch', default=100, type=int, help='number of epochs')
-    parser.add_argument('--nb-cycles-per-epoch', default=10, type=int, help='number of cycles per epoch')
+    parser.add_argument('--nb-cycles-per-epoch', default=100, type=int, help='number of cycles per epoch')
     parser.add_argument('--nb-rollout-steps', default=100, type=int, help='number rollout steps')
     parser.add_argument('--nb-train-steps', default=20, type=int, help='number train steps')
     parser.add_argument('--nb-warmup-steps', default=100, type=int, help='time without training but only filling the replay memory')
     parser.add_argument('--train-mode', default=1, type=int, help='traing mode')
-    parser.add_argument('--decay-coef', default=0.2, type=float, help='decay coef')
+    parser.add_argument('--decay-args1', default=0.2, type=float, help='decay coef')
+    parser.add_argument('--decay-args2', default=0.2, type=float, help='decay coef')
+    parser.add_argument('--decay-type', default='exp', type=str, help='type of decay, exp, inverse, linear')
+    
     parser.add_argument('--search-method', default = 0, type=int, help='1 if do policy search')
     parser.add_argument('--back-step', default = 7, type=int, help='back step for search policy')
     parser.add_argument('--multi-step', default = 2, type=int, help='multi search step for search policy')

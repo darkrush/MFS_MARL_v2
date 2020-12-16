@@ -16,7 +16,6 @@ def parse_arg():
     parser.add_argument('--nb-train-steps', default=20, type=int, help='number train steps')
     parser.add_argument('--nb-warmup-steps', default=100, type=int, help='time without training but only filling the replay memory')
     parser.add_argument('--train-mode', default=1, type=int, help='traing mode')
-    parser.add_argument('--decay-coef', default=0.5, type=float, help='decay coef')
     parser.add_argument('--search-method', default = 0, type=int, help='1 if do policy search')
     parser.add_argument('--back-step', default = 7, type=int, help='back step for search policy')
     parser.add_argument('--multi-step', default = 2, type=int, help='multi search step for search policy')
@@ -24,7 +23,10 @@ def parse_arg():
     parser.add_argument('--expert-file', default='./expert.pkl', type=str, help='expert actor file dir')
     parser.add_argument('--cuda', default=1, type=int, help='cuda')
     parser.add_argument('--no-exploration',default=1, type=int, help='1:no e-greedy exploration 0:with e-greedy')
-
+    parser.add_argument('--decay-args1', default=0.2, type=float, help='decay coef')
+    parser.add_argument('--decay-args2', default=0.2, type=float, help='decay coef')
+    parser.add_argument('--decay-type', default='exp', type=str, help='type of decay, exp, inverse, linear')
+    
     #DQN args
     parser.add_argument('--Qnetwork-lr', default=0.0003, type=float, help='critic net learning rate')
     parser.add_argument('--lr-decay', default=10.0, type=float, help='critic lr decay')

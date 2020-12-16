@@ -57,7 +57,19 @@ def run_DQN(args_dict, run_instance = None):
     for epoch in range(args_dict['nb_epoch']):
         # Calculate the epsilon decayed by epoch.
         # Which used for epsilon-greedy exploration and policy search exploration.
-        epsilon = 0.1**((epoch/args_dict['nb_epoch'])/args_dict['decay_coef'])
+        t = epoch/args_dict['nb_epoch']
+        a1 = args_dict['decay_args1']
+        a2 = args_dict['decay_args2']
+        if args_dict['decay_type'] == 'exp':
+            epsilon = a1*np.exp(-t*a2)
+        elif args_dict['decay_type'] == 'inverse':
+            epsilon = a1/(t+a2)
+        elif args_dict['decay_type'] == 'linear':
+            epsilon = a1-a2*t
+        if epsilon >1.0:
+            epsilon = 1.0
+        if epsilon <0.0:
+            epsilon = 0.0
         for cycle in range(args_dict['nb_cycles_per_epoch']):
             # Do training in cycle-way. In each cycle, rollout one trajectory and update critic and actor.
             log_info = trainer.cycle(epsilon = epsilon, no_exploration = args_dict['no_exploration'])
