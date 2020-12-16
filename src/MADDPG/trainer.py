@@ -79,7 +79,7 @@ class MADDPG_trainer(object):
         last_back_index = 0
         search_step = 0
         while True:
-            epsilon_explr = no_exploration
+            epsilon_explr = 0.0 if no_exploration==1 else 1.0
             
             assert self.search_method is 0
             if self.search_method is 1 :

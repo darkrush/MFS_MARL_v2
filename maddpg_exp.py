@@ -28,8 +28,8 @@ def parse_arg():
     parser.add_argument('--no-exploration',default=0, type=int, help='1:no e-greedy exploration 0:with e-greedy')
     
     #MADDPG args
-    parser.add_argument('--actor-lr', default=0.001, type=float, help='actor net learning rate')
-    parser.add_argument('--critic-lr', default=0.01, type=float, help='critic net learning rate')
+    parser.add_argument('--actor-lr', default=0.0001, type=float, help='actor net learning rate')
+    parser.add_argument('--critic-lr', default=0.001, type=float, help='critic net learning rate')
     parser.add_argument('--lr-decay', default=10.0, type=float, help='critic lr decay')
     parser.add_argument('--l2-critic', default=0.01, type=float, help='critic l2 regularization')
     parser.add_argument('--discount', default=0.99, type=float, help='reward discout')
