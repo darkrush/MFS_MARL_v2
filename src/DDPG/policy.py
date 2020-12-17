@@ -34,7 +34,7 @@ class Mix_policy(object):
                 laser_data = laser_data.cuda()
             action = self.actor(pos,laser_data).cpu().numpy()
         if random.random() <self.epsilon:
-            action = (np.random.random(action.shape)*2-1)*4
+            action = np.random.random(size=action.shape)*2-1
         action = np.clip(action, -1., 1.)
         action_list = []
         for idx in range(len(obs_list)):
@@ -74,7 +74,7 @@ class Agent_Mix_policy(object):
             action = self.actor(pos,laser_data).cpu().numpy()
             
         if random.random() <self.epsilon:
-            action = (np.random.random(action.shape)*2-1)*4
+            action = np.random.random(size=action.shape)*2-1
         
         action = np.clip(action, -1., 1.)
         action_list = []

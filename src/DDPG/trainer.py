@@ -62,11 +62,11 @@ class DDPG_trainer(object):
         self.agent.save_model('./')
         return pretrain_loss_list
     
-    def cycle(self, epsilon, train_actor,no_exploration = 0):
+    def cycle(self, crash_p, epsilon, train_actor,no_exploration = 0):
         self.env.reset()
         self.search_env.reset()
         crash_checker = Crash_Checker()
-        crash_checker.set_p(epsilon)
+        crash_checker.set_p(crash_p)
         #get trajection
         search_policy = None
         replace_table = None
@@ -168,7 +168,7 @@ class DDPG_trainer(object):
 
     def eval(self):
         self.eval_env.reset()
-        rollout_policy = Mix_policy(self.agent.actor,epsilon_explr,None,None)
+        rollout_policy = Mix_policy(self.agent.actor,0.0,None,None)
         self.eval_env.rollout(rollout_policy.inference)
         results = self.eval_env.get_result()
         return results

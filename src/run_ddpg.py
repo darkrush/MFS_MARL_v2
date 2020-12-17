@@ -7,8 +7,8 @@ import numpy as np
 import torch
 import random
 
-def get_env(scenario_name, step_t, sim_step):
-    env = Env.MultiCarSim(scenario_name, step_t, sim_step)
+def get_env(scenario_name, step_t, sim_step, agent_number):
+    env = Env.MultiCarSim(scenario_name, step_t, sim_step,agent_number = agent_number)
     return env
 
 def run_ddpg(args_dict, run_instance = None):
@@ -30,9 +30,9 @@ def run_ddpg(args_dict, run_instance = None):
     torch.backends.cudnn.deterministic = True
 
     # setup environment instance for trainning, searching policy and evaluation
-    train_env = get_env(args_dict['train_env'], step_t=args_dict['step_t'], sim_step=args_dict['train_sim_step'])
-    search_env = get_env(args_dict['search_env'], step_t=args_dict['step_t'], sim_step=args_dict['search_sim_step'])
-    eval_env = get_env(args_dict['eval_env'], step_t=args_dict['step_t'], sim_step=args_dict['eval_sim_step'])
+    train_env = get_env(args_dict['train_env'], step_t=args_dict['step_t'], sim_step=args_dict['train_sim_step'],agent_number=args_dict['nb_agents'])
+    search_env = get_env(args_dict['search_env'], step_t=args_dict['step_t'], sim_step=args_dict['search_sim_step'],agent_number=args_dict['nb_agents'])
+    eval_env = get_env(args_dict['eval_env'], step_t=args_dict['step_t'], sim_step=args_dict['eval_sim_step'],agent_number=args_dict['nb_agents'])
     for env in [train_env, search_env, eval_env]:
         env.reward_coef['reach'] = args_dict['reach']
         env.reward_coef['crash'] = args_dict['crash']
@@ -55,24 +55,24 @@ def run_ddpg(args_dict, run_instance = None):
     PB.start()
     
     for epoch in range(args_dict['nb_epoch']):
-        # Calculate the epsilon decayed by epoch.
-        # Which used for epsilon-greedy exploration and policy search exploration.
-        t = epoch/args_dict['nb_epoch']
-        a1 = args_dict['decay_args1']
-        a2 = args_dict['decay_args2']
-        if args_dict['decay_type'] == 'exp':
-            epsilon = a1*np.exp(-t*a2)
-        elif args_dict['decay_type'] == 'inverse':
-            epsilon = a1/(t+a2)
-        elif args_dict['decay_type'] == 'linear':
-            epsilon = a1-a2*t
-        if epsilon >1.0:
-            epsilon = 1.0
-        if epsilon <0.0:
-            epsilon = 0.0
         for cycle in range(args_dict['nb_cycles_per_epoch']):
+            # Calculate the epsilon decayed by epoch.
+            # Which used for policy search exploration.
+            t = cycle_count/total_cycle
+            a1 = args_dict['decay_args1']
+            a2 = args_dict['decay_args2']
+            if args_dict['decay_type'] == 'exp':
+                epsilon = a1*np.exp(-t*a2)
+            elif args_dict['decay_type'] == 'inverse':
+                epsilon = a1/(t+a2)
+            elif args_dict['decay_type'] == 'linear':
+                epsilon = a1-a2*t
+            if epsilon >1.0:
+                epsilon = 1.0
+            if epsilon <0.0:
+                epsilon = 0.0
             # Do training in cycle-way. In each cycle, rollout one trajectory and update critic and actor.
-            log_info = trainer.cycle(epsilon = epsilon, train_actor = epoch>0, no_exploration = args_dict['no_exploration'])
+            log_info = trainer.cycle(crash_p = epsilon, epsilon = epsilon, train_actor = epoch>0, no_exploration = args_dict['no_exploration'])
 
             #Calculate total serach step in trainning
             total_search_sample += log_info['train_search_step']
