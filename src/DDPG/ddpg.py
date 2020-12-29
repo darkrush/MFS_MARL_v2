@@ -25,13 +25,11 @@ class DDPG(object):
         actor  = Actor( nb_pos=self.args_dict['nb_pos'],
                         nb_laser=self.args_dict['nb_laser'],
                         nb_actions=self.args_dict['nb_actions'],
-                        hidden1 = self.args_dict['hidden1'],
                         hidden2 = self.args_dict['hidden2'] ,
                         layer_norm = self.args_dict['layer_norm'])
         critic = Critic(nb_pos=self.args_dict['nb_pos'],
                         nb_laser=self.args_dict['nb_laser'],
                         nb_actions=self.args_dict['nb_actions'],
-                        hidden1 = self.args_dict['hidden1'],
                         hidden2 = self.args_dict['hidden2'] ,
                         layer_norm = self.args_dict['layer_norm'])
         self.actor         = copy.deepcopy(actor)
