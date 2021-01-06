@@ -207,8 +207,8 @@ def laser_agent_agent_njit(R_laser,N_laser,true_N,a_x,a_y,a_t,b_x,b_y,b_t,b_L,b_
         for i in range(true_N):
             for j in range(linear_sacle):
                 l_data = true_l_laser[i]
-                r_data = true_l_laser[(i+1)%true_N]
-                alpha = j/linear_sacle
-                tmp = l_data*(1-alpha) + r_data*alpha
-                l_laser[i*linear_sacle+j] = tmp
+                #r_data = true_l_laser[(i+1)%true_N]
+                #alpha = j/linear_sacle
+                #tmp = l_data*(1-alpha) + r_data*alpha
+                l_laser[i*linear_sacle+j] = l_data
         return l_laser

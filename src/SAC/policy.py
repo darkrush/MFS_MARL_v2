@@ -93,7 +93,8 @@ class Agent_Mix_policy(object):
             action_list.append(a)
         if self.replace_list is not None:
             with torch.no_grad():
-                action_replace = self.expert_actor(pos,laser_data).cpu().numpy()
+                _, _, action_replace = self.expert_actor.sample(pos,laser_data)
+                action_replace = action_replace.cpu().numpy()
             action_replace = np.clip(action_replace, -1., 1.)
             for agent_idx in self.replace_list:
                 if state_list[agent_idx].crash or state_list[agent_idx].reach:

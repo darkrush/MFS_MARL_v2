@@ -319,6 +319,9 @@ class MultiCarSim(object):
         
         if agent_number >0 and self.reset_mode == 'random':
             self.agent_number = agent_number
+            scale = (self.agent_number/6.0)**0.5
+            for idx in range(len(self.field_range)):
+                self.field_range[idx] = self.field_range[idx] * scale
         else:
             group_list = senario_dict['agent_groups'].values()
             self.agent_number = sum([len(group) for group in group_list])
@@ -801,6 +804,9 @@ class MultiCarSim(object):
         self.laser_state_list = []
         for idx_a in range(self.agent_number):
             laser_state = np.array([R_laser]*N_laser)
+            if true_N == 0:
+                self.laser_state_list.append(laser_state)
+                continue    
             for idx_b in range(self.agent_number):
                 if idx_a == idx_b:
                     continue
